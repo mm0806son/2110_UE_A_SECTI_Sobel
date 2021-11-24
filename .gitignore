@@ -1,0 +1,4 @@
+
+*.jpeg
+tb/tb_sobel.vhd
+tb/pkg_csv_reader.vhd
