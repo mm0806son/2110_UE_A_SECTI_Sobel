@@ -40,7 +40,7 @@ int main(){
 	int Index;
 	u32 Addr;
 	XAxiVdma myVDMA;
-	XAxiVdma_Config *config = XAxiVdma_LookupConfig(<< FILL IN DEVICE ID HERE >>); //TODO Address here
+	XAxiVdma_Config *config = XAxiVdma_LookupConfig(XPAR_AXI_VDMA_DEVICE_ID); //TODO Address here
 	XAxiVdma_DmaSetup ReadCfg;
 	status = XAxiVdma_CfgInitialize(&myVDMA, config, config->BaseAddress);
 	if(status != XST_SUCCESS) {
@@ -75,7 +75,7 @@ int main(){
 	}
 
 	XAxiVdma_IntrEnable(&myVDMA, XAXIVDMA_IXR_COMPLETION_MASK, XAXIVDMA_READ);
-	SetupIntrSystem(&myVDMA, << FILL IN INTERRUPT ID HERE >>);//TODO Address here
+	SetupIntrSystem(&myVDMA, XPAR_FABRIC_AXI_VDMA_MM2S_INTROUT_INTR);//TODO Address here
 
 	drawImage(HSize,VSize,256,256,(HSize-imgHSize)/2,(VSize-imgVSize)/2,1,imageData,Buffer);
 	Xil_DCacheFlush();
