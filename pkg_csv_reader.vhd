@@ -56,7 +56,6 @@ package body pkg_csv_reader is
 		-- Read one line from the csv file, and keep it in the cache
 		procedure readline is begin
 			readline(my_csv_file, current_line);
-			report "call to readline function";
 			end_of_file_reached := endfile(my_csv_file);
 		end;
 					
@@ -84,3 +83,5 @@ package body pkg_csv_reader is
 	end protected body;
 
 end;
+
+--Choose VHDL 2008

@@ -69,7 +69,7 @@ BEGIN
 
             IF (read_en = '1') THEN --ready to read
                 data_out <= LineBuffer(rd_ptr) & LineBuffer(rd_ptr + 1) & LineBuffer(rd_ptr + 2);
-                rd_ptr <= rd_ptr + 1; --
+                rd_ptr <= rd_ptr + 1;
             END IF;
         END IF;
 

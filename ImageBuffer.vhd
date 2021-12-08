@@ -143,7 +143,7 @@ BEGIN
             valid_3 <= '0';
             LineBuffer_rd_ptr <= "00";
             LineBuffer_wr_ptr <= "00";
-        ELSIF (rising_edge(clk) AND ((count_write_line - count_read_line = 3) OR count_write_line <= 3)) THEN
+        ELSIF (rising_edge(clk) AND ((count_write_line - count_read_line = 3) OR count_write_line <= 3) AND count_write <= IMAGE_HEIGHT) THEN
             IF (valid_in = '1') THEN
                 CASE LineBuffer_wr_ptr IS
                     WHEN "00" => valid_0 <= '1';

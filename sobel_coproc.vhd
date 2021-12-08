@@ -122,6 +122,7 @@ BEGIN
         ELSIF (rising_edge(clk)) THEN
             IF (ImageBuffer_valid_out = '1' AND (t_valid_out_s = '0' OR t_ready_out = '1')) THEN --data coming & (register is vide | data in the register is already read)
                 t_valid_out_s <= '1'; --data in the register
+                interrupt_out <= '1';
 
                 A := to_integer(unsigned(neighbourhood_out(7 DOWNTO 0)));
                 B := to_integer(unsigned(neighbourhood_out(15 DOWNTO 8)));
@@ -142,6 +143,9 @@ BEGIN
                 END IF;
             ELSIF (t_ready_out = '1') THEN --data in the register is already read
                 t_valid_out_s <= '0'; --register is vide
+                interrupt_out <= '0';
+            ELSE
+                interrupt_out <= '0';
 
             END IF;
         END IF;
