@@ -20,7 +20,7 @@ def sobel(image, num_rows, num_columns, threshold):
             pixels[8] = image[row + 2][column + 2]
 
             Gh = -pixels[0] - 2 * pixels[1] - pixels[2] + pixels[6] + 2 * pixels[7] + pixels[8]  # S_x
-            Gv = pixels[0] + 2 * pixels[3] + pixels[6] - pixels[2] - 2 * pixels[5] - pixels[7]  # S_y
+            Gv = pixels[0] + 2 * pixels[3] + pixels[6] - pixels[2] - 2 * pixels[5] - pixels[8]  # S_y
 
             gradient = abs(Gh) + abs(Gv)
 
@@ -35,6 +35,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-i", "--image", required=True, help="Path to the image")
     args = vars(ap.parse_args())
+    # args = vars("/homes/z20ning/Bureau/UE_A_SECTI/Code/IMT_LOGO_256x256.jpeg")
+    # args = vars("IMT_LOGO_256x256.jpeg")
 
     image = cv2.imread(args["image"])
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
