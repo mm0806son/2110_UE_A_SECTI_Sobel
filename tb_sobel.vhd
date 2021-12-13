@@ -1,6 +1,7 @@
 --!
 --! @file   tb_sobel.vhd
 --! @author Stefan Weithoffer (stefan.weithoffer@imt-atlantique.fr)
+--! Version v2.0
 --! @modified by Zijie NING & Guoxiong SUN
 
 LIBRARY ieee;
@@ -20,9 +21,10 @@ ENTITY tb_sobel IS
         CLK_EXTRA_DELAY : TIME := 0 ns;
 
         -- implementation parameters
+        CONSTANT FILTER_SIZE : NATURAL := 3;
         CONSTANT PIXEL_BW : NATURAL := 8;
-        CONSTANT IMAGE_WIDTH : NATURAL := 100;
-        CONSTANT IMAGE_HEIGHT : NATURAL := 100
+        CONSTANT IMAGE_WIDTH : NATURAL := 10;
+        CONSTANT IMAGE_HEIGHT : NATURAL := 10
 
     );
 END ENTITY tb_sobel;
@@ -44,6 +46,12 @@ ARCHITECTURE sim OF tb_sobel IS
     -- ADAPT TO YOUR COMPONENT HERE IF NECESSARY
     --
     COMPONENT sobel_coproc IS
+        GENERIC (
+            CONSTANT FILTER_SIZE : NATURAL;
+            CONSTANT PIXEL_BW : NATURAL := 8;
+            CONSTANT IMAGE_WIDTH : NATURAL := 100;
+            CONSTANT IMAGE_HEIGHT : NATURAL := 100
+        );
         PORT (
             clk : IN STD_LOGIC;
             rst_n : IN STD_LOGIC;
@@ -62,15 +70,20 @@ ARCHITECTURE sim OF tb_sobel IS
         );
     END COMPONENT sobel_coproc;
 
-    SIGNAL t_valid_in : STD_LOGIC;
+    SIGNAL t_valid_in : STD_LOGIC := '0';
     SIGNAL t_ready_in : STD_LOGIC;
     SIGNAL t_data_in : STD_LOGIC_VECTOR(PIXEL_BW - 1 DOWNTO 0);
     SIGNAL t_valid_out : STD_LOGIC;
-    SIGNAL t_ready_out : STD_LOGIC;
+    SIGNAL t_ready_out : STD_LOGIC := '0';
     SIGNAL t_data_out : STD_LOGIC_VECTOR(PIXEL_BW - 1 DOWNTO 0);
     SIGNAL interrupt_out : STD_LOGIC;
-    SIGNAL input_i : INTEGER RANGE 0 TO IMAGE_WIDTH - 1;
-    SIGNAL input_k : INTEGER RANGE 0 TO IMAGE_WIDTH - 1;
+    SIGNAL input_i : INTEGER RANGE 0 TO IMAGE_HEIGHT - 1 := 0;
+    SIGNAL input_k : INTEGER RANGE 0 TO IMAGE_WIDTH - 1 := 0;
+    SIGNAL output_i : INTEGER RANGE 0 TO IMAGE_HEIGHT - 3 := 0;
+    SIGNAL output_k : INTEGER RANGE 0 TO IMAGE_WIDTH - 3 := 0;
+
+    SIGNAL cpt : INTEGER RANGE 0 TO IMAGE_WIDTH * IMAGE_HEIGHT;
+
 BEGIN
 
     -- ========================================
@@ -105,16 +118,16 @@ BEGIN
         -- Change here to the proper path and name of the reference image
         v_csv.initialize("/homes/z20ning/Bureau/UE_A_SECTI/supplementary_materials/IMT_LOGO_100x100_reference.csv");
         --		v_csv.initialize("IMT_LOGO_100x100_reference.csv");
-        output_row_loop : FOR i IN 0 TO IMAGE_WIDTH - 1 LOOP
+        reference_row_loop : FOR i IN 0 TO IMAGE_WIDTH - 1 LOOP
             v_csv.readline;
-            output_column_loop : FOR k IN 0 TO IMAGE_HEIGHT - 1 LOOP
+            reference_column_loop : FOR k IN 0 TO IMAGE_HEIGHT - 1 LOOP
                 v_image(i)(k) := v_csv.read_integer;
             END LOOP;
         END LOOP;
         v_csv.dispose;
         reference_image <= v_image;
 
-        output_image <= v_image;
+        --output_image <= v_image;
 
         WAIT FOR 2 * CLK_HALF;
 
@@ -140,26 +153,78 @@ BEGIN
         -- assert false report "Simulation Finished!" severity failure;
     END PROCESS;
 
-    Input : PROCESS (clk, rst_n)
+    --    Input : PROCESS (clk, rst_n)
+    --    BEGIN
+    --        IF (rst_n = '0') THEN --reset
+    --            -- t_valid_in <= '0';
+    --            -- t_ready_out <= '0';
+    --            t_data_in <= (OTHERS => '0');
+    --        ELSIF (rising_edge(clk) AND (t_ready_in = '1')) THEN
+    --            t_data_in <= STD_LOGIC_VECTOR(to_unsigned(input_image(input_i)(input_k), 8));
+    --            IF (input_k < IMAGE_WIDTH - 1) THEN
+    --                input_k <= input_k + 1;
+    --            ELSE
+    --                input_k <= 0;
+    --                IF (input_i < IMAGE_HEIGHT - 1) THEN
+    --                    input_i <= input_i + 1;
+    --                ELSE
+    --                    input_i <= 0;
+    --                END IF;
+    --            END IF;
+
+    --        END IF;
+
+    --    END PROCESS Input;
+
+    Output : PROCESS (clk, rst_n)
     BEGIN
         IF (rst_n = '0') THEN --reset
-            t_valid_in <= '0';
-            t_ready_out <= '0';
-        ELSIF (rising_edge(clk) AND (t_ready_in = '1')) THEN
-            t_data_in <= STD_LOGIC_VECTOR(to_unsigned(input_image(input_i)(input_k), 8));
-            input_i <= input_i + 1;
-            input_k <= input_k + 1;
+            output_image <= (OTHERS => (OTHERS => 0));
+        ELSIF (rising_edge(clk)) THEN
+            IF (t_ready_out = '1') AND (t_valid_out = '1') THEN
+                output_image(output_i)(output_k) <= to_integer(unsigned(t_data_out));
+                IF (output_k < IMAGE_WIDTH - 1) THEN
+                    output_k <= output_k + 1;
+                ELSE
+                    output_k <= 0;
+                    IF (output_i < IMAGE_HEIGHT - 1) THEN
+                        output_i <= output_i + 1;
+                    ELSE
+                        output_i <= 0;
+                    END IF;
+                END IF;
+            END IF;
         END IF;
 
-    END PROCESS Input;
+    END PROCESS Output;
+
     -- ========================================
     -- Design under Test (DUT)
     -- ========================================
 
-    --
-    -- ADAPT COMPONENT INSTANCIATION HERE IF NECESSARY
-    --
+    PROCESS (clk, rst_n)
+    BEGIN
+        IF (rst_n = '0') THEN
+            cpt <= 0;
+            t_valid_in <= '1';
+        ELSIF rising_edge(clk) THEN
+            IF cpt < IMAGE_WIDTH * IMAGE_HEIGHT THEN
+                cpt <= cpt + 1;
+            ELSE
+                t_valid_in <= '0';
+            END IF;
+        END IF;
+    END PROCESS;
+
+    t_data_in <= STD_LOGIC_VECTOR(to_unsigned(cpt, PIXEL_BW));
+
     DUT : sobel_coproc
+    GENERIC MAP(
+        FILTER_SIZE => FILTER_SIZE,
+        PIXEL_BW => PIXEL_BW,
+        IMAGE_WIDTH => IMAGE_WIDTH,
+        IMAGE_HEIGHT => IMAGE_HEIGHT
+    )
     PORT MAP(
         clk => clk,
         rst_n => rst_n,
@@ -178,7 +243,7 @@ BEGIN
 
     -- clock generation
     rst_n <= '0', '1' AFTER 100ns;
-    t_valid_in <= '0', '1'AFTER 20ns, '0' AFTER 40ns, '1' AFTER 120ns, '0' AFTER 140ns, '1' AFTER 220ns, '0' AFTER 240ns;
-    --t_data_in <= (OTHERS => '1');
-    t_ready_out <= '0', '1'AFTER 60ns, '0' AFTER 80ns, '1'AFTER 160ns, '0' AFTER 180ns, '1'AFTER 260ns, '0' AFTER 280ns;
+    --    t_valid_in <= NOT t_valid_in AFTER 30ns;
+    t_ready_out <= NOT t_ready_out AFTER 50ns;
+
 END ARCHITECTURE sim;

@@ -6,15 +6,7 @@
 -- Design Name: 
 -- Module Name: sobel_coproc - Behavioral
 -- Project Name: Sobel Processer
--- Target Devices: 
--- Tool Versions: 
--- Description: 
--- 
--- Dependencies: 
--- 
--- Revision:
--- Revision 0.01 - File Created
--- Additional Comments:
+-- Version v2.0
 -- @modified by Zijie NING & Guoxiong SUN
 ----------------------------------------------------------------------------------
 LIBRARY IEEE;
@@ -31,13 +23,11 @@ USE IEEE.NUMERIC_STD.ALL;
 
 ENTITY sobel_coproc IS
     GENERIC (
-        -- general
-
         -- implementation parameters
+        CONSTANT FILTER_SIZE : NATURAL := 3;
         CONSTANT PIXEL_BW : NATURAL := 8;
         CONSTANT IMAGE_WIDTH : NATURAL := 100;
         CONSTANT IMAGE_HEIGHT : NATURAL := 100
-
     );
     PORT (
         clk : IN STD_LOGIC; --clock
@@ -52,8 +42,10 @@ ENTITY sobel_coproc IS
 END sobel_coproc;
 
 ARCHITECTURE Behavioral OF sobel_coproc IS
+
     COMPONENT ImageBuffer IS
         GENERIC (
+            CONSTANT FILTER_SIZE : NATURAL := 3;
             CONSTANT PIXEL_BW : NATURAL;
             CONSTANT IMAGE_WIDTH : NATURAL;
             CONSTANT IMAGE_HEIGHT : NATURAL
@@ -79,6 +71,7 @@ BEGIN
 
     ImageBuffer_0 : ImageBuffer
     GENERIC MAP(
+        FILTER_SIZE => FILTER_SIZE,
         PIXEL_BW => PIXEL_BW,
         IMAGE_WIDTH => IMAGE_WIDTH,
         IMAGE_HEIGHT => IMAGE_HEIGHT
@@ -114,15 +107,25 @@ BEGIN
 
     sobel : PROCESS (clk, rst_n)
         VARIABLE A, B, C, D, F, G, H, I : INTEGER;
+        VARIABLE read_count : INTEGER := 0;
     BEGIN
         IF (rst_n = '0') THEN --reset
             t_valid_out_s <= '0'; --register is vide
             t_data_out <= (OTHERS => '0'); --clear the register
+            read_count := 0;
+            interrupt_out <= '0';
 
         ELSIF (rising_edge(clk)) THEN
             IF (ImageBuffer_valid_out = '1' AND (t_valid_out_s = '0' OR t_ready_out = '1')) THEN --data coming & (register is vide | data in the register is already read)
                 t_valid_out_s <= '1'; --data in the register
-                interrupt_out <= '1';
+
+                IF (read_count = IMAGE_WIDTH - 2) THEN
+                    interrupt_out <= '1';
+                    read_count := 0;
+                ELSE
+                    read_count := read_count + 1;
+                    interrupt_out <= '0';
+                END IF;
 
                 A := to_integer(unsigned(neighbourhood_out(7 DOWNTO 0)));
                 B := to_integer(unsigned(neighbourhood_out(15 DOWNTO 8)));
@@ -143,9 +146,6 @@ BEGIN
                 END IF;
             ELSIF (t_ready_out = '1') THEN --data in the register is already read
                 t_valid_out_s <= '0'; --register is vide
-                interrupt_out <= '0';
-            ELSE
-                interrupt_out <= '0';
 
             END IF;
         END IF;
