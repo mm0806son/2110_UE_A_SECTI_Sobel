@@ -245,5 +245,6 @@ BEGIN
     rst_n <= '0', '1' AFTER 100ns;
     --    t_valid_in <= NOT t_valid_in AFTER 30ns;
     t_ready_out <= NOT t_ready_out AFTER 50ns;
+    --t_ready_out <= '1';
 
 END ARCHITECTURE sim;

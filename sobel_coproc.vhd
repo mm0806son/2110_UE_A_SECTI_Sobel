@@ -65,8 +65,9 @@ ARCHITECTURE Behavioral OF sobel_coproc IS
     SIGNAL Gh : INTEGER RANGE 0 TO 1023;
     SIGNAL Gv : INTEGER RANGE 0 TO 1023;
     SIGNAL gradient : INTEGER RANGE 0 TO 2047 := 0;
-    SIGNAL threshold : INTEGER RANGE 0 TO 2047 := 255;
+    CONSTANT threshold : INTEGER RANGE 0 TO 2047 := 255;
     SIGNAL ImageBuffer_valid_out : STD_LOGIC;
+    SIGNAL read_count : INTEGER RANGE 0 TO IMAGE_WIDTH := 0;
 BEGIN
 
     ImageBuffer_0 : ImageBuffer
@@ -107,23 +108,24 @@ BEGIN
 
     sobel : PROCESS (clk, rst_n)
         VARIABLE A, B, C, D, F, G, H, I : INTEGER;
-        VARIABLE read_count : INTEGER := 0;
+        --VARIABLE read_count : INTEGER := 0;
     BEGIN
         IF (rst_n = '0') THEN --reset
             t_valid_out_s <= '0'; --register is vide
             t_data_out <= (OTHERS => '0'); --clear the register
-            read_count := 0;
+            read_count <= 0;
             interrupt_out <= '0';
 
         ELSIF (rising_edge(clk)) THEN
-            IF (ImageBuffer_valid_out = '1' AND (t_valid_out_s = '0' OR t_ready_out = '1')) THEN --data coming & (register is vide | data in the register is already read)
+            --IF (ImageBuffer_valid_out = '1' AND (t_valid_out_s = '0' OR t_ready_out = '1')) THEN --data coming & (register is vide | data in the register is already read)
+            IF (ImageBuffer_valid_out = '1') THEN --data coming & (register is vide | data in the register is already read)
                 t_valid_out_s <= '1'; --data in the register
 
-                IF (read_count = IMAGE_WIDTH - 2) THEN
+                IF (read_count = IMAGE_WIDTH - FILTER_SIZE) THEN
                     interrupt_out <= '1';
-                    read_count := 0;
+                    read_count <= 0;
                 ELSE
-                    read_count := read_count + 1;
+                    read_count <= read_count + 1;
                     interrupt_out <= '0';
                 END IF;
 
