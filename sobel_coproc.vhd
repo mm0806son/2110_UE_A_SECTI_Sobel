@@ -45,7 +45,7 @@ ARCHITECTURE Behavioral OF sobel_coproc IS
 
     COMPONENT ImageBuffer IS
         GENERIC (
-            CONSTANT FILTER_SIZE : NATURAL := 3;
+            CONSTANT FILTER_SIZE : NATURAL;
             CONSTANT PIXEL_BW : NATURAL;
             CONSTANT IMAGE_WIDTH : NATURAL;
             CONSTANT IMAGE_HEIGHT : NATURAL
