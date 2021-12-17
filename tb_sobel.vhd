@@ -153,6 +153,7 @@ BEGIN
         -- assert false report "Simulation Finished!" severity failure;
     END PROCESS;
 
+    -- Test process with an image
     --    Input : PROCESS (clk, rst_n)
     --    BEGIN
     --        IF (rst_n = '0') THEN --reset
@@ -175,6 +176,22 @@ BEGIN
     --        END IF;
 
     --    END PROCESS Input;
+
+    Sequence_generater : PROCESS (clk, rst_n) --a simple exemple for the test
+    BEGIN
+        IF (rst_n = '0') THEN
+            cpt <= 0;
+            t_valid_in <= '1';
+        ELSIF rising_edge(clk) THEN
+            IF cpt < IMAGE_WIDTH * IMAGE_HEIGHT THEN
+                cpt <= cpt + 1;
+            ELSE
+                t_valid_in <= '0';
+            END IF;
+        END IF;
+    END PROCESS Sequence_generater;
+
+    t_data_in <= STD_LOGIC_VECTOR(to_unsigned(cpt, PIXEL_BW));
 
     Output : PROCESS (clk, rst_n)
     BEGIN
@@ -201,22 +218,6 @@ BEGIN
     -- ========================================
     -- Design under Test (DUT)
     -- ========================================
-
-    PROCESS (clk, rst_n)
-    BEGIN
-        IF (rst_n = '0') THEN
-            cpt <= 0;
-            t_valid_in <= '1';
-        ELSIF rising_edge(clk) THEN
-            IF cpt < IMAGE_WIDTH * IMAGE_HEIGHT THEN
-                cpt <= cpt + 1;
-            ELSE
-                t_valid_in <= '0';
-            END IF;
-        END IF;
-    END PROCESS;
-
-    t_data_in <= STD_LOGIC_VECTOR(to_unsigned(cpt, PIXEL_BW));
 
     DUT : sobel_coproc
     GENERIC MAP(
