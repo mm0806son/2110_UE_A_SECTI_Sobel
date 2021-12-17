@@ -61,9 +61,7 @@ ARCHITECTURE Behavioral OF ImageBuffer IS
     --    SIGNAL data_out_0, data_out_1, data_out_2, data_out_3 : STD_LOGIC_VECTOR(3 * PIXEL_BW - 1 DOWNTO 0); --output of each linebuffer
     TYPE T_DATA_OUT IS ARRAY (0 TO FILTER_SIZE) OF STD_LOGIC_VECTOR(FILTER_SIZE * PIXEL_BW - 1 DOWNTO 0);
     SIGNAL data_out : T_DATA_OUT;
-    --    SIGNAL valid_0, valid_1, valid_2, valid_3 : STD_LOGIC; --valid write for each linebuffer
     SIGNAL read_en : STD_LOGIC_VECTOR(FILTER_SIZE DOWNTO 0); --valid write for each linebuffer
-    --    SIGNAL LineBuffer_rd_ptr : STD_LOGIC_VECTOR (1 DOWNTO 0) := "00"; --which buffer will be read
     SIGNAL read_not_en_ptr, LineBuffer_rd_ptr : INTEGER RANGE 0 TO FILTER_SIZE; -- (1 DOWNTO 0) := "00"; --which buffer will be read
     SIGNAL LineBuffer_wr_ptr : STD_LOGIC_VECTOR (1 DOWNTO 0) := "00"; --which buffer will be written
     SIGNAL count_read : INTEGER RANGE 0 TO IMAGE_WIDTH - FILTER_SIZE := 0; --which pixel to read in the line
@@ -92,51 +90,15 @@ BEGIN
         );
     END GENERATE G_LineBuffer;
 
-    --    LineBuffer_1 : LineBuffer
-    --    GENERIC MAP(
-    --        PIXEL_BW => PIXEL_BW,
-    --        IMAGE_WIDTH => IMAGE_WIDTH,
-    --        IMAGE_HEIGHT => IMAGE_HEIGHT
-    --    )
-    --    PORT MAP(
-    --        clk => clk,
-    --        rst_n => rst_n,
-    --        pixel_in => pixel_in,
-    --        valid_in => write_en(1),
-    --        data_out => data_out_1,
-    --        read_en => read_en(1)
-    --    );
-
-    --    LineBuffer_2 : LineBuffer
-    --    GENERIC MAP(
-    --        PIXEL_BW => PIXEL_BW,
-    --        IMAGE_WIDTH => IMAGE_WIDTH,
-    --        IMAGE_HEIGHT => IMAGE_HEIGHT
-    --    )
-    --    PORT MAP(
-    --        clk => clk,
-    --        rst_n => rst_n,
-    --        pixel_in => pixel_in,
-    --        valid_in => write_en(2),
-    --        data_out => data_out_2,
-    --        read_en => read_en(2)
-    --    );
-
-    --    LineBuffer_3 : LineBuffer
-    --    GENERIC MAP(
-    --        PIXEL_BW => PIXEL_BW,
-    --        IMAGE_WIDTH => IMAGE_WIDTH,
-    --        IMAGE_HEIGHT => IMAGE_HEIGHT
-    --    )
-    --    PORT MAP(
-    --        clk => clk,
-    --        rst_n => rst_n,
-    --        pixel_in => pixel_in,
-    --        valid_in => write_en(3),
-    --        data_out => data_out_3,
-    --        read_en => read_en(3)
-    --    );
-
+    -- ========================================
+    -- increment_write_en_s
+    -- When a line is full and new data is entered from outside, 
+    -- the written linebuffer is modified by cyclically shifting 
+    -- all data in write_en_s one bit to the left.
+    -- This is done by taking the value of write_en_s(FILTER_SIZE) 
+    -- from write_en_s and placing it in write_en_s(0), shifting the 
+    -- rest of the value one bit to the left.
+    -- ========================================
     increment_write_en_s : PROCESS (clk, rst_n)
     BEGIN
         IF (rst_n = '0') THEN
@@ -148,12 +110,16 @@ BEGIN
         END IF;
     END PROCESS increment_write_en_s;
 
-    --    proc_write
-    --    G_write_en : FOR i IN 0 TO FILTER_SIZE GENERATE
-    --        write_en(i) <= (write_en_s(i) AND valid_in)  when (((count_write_line - count_read_line) <= 3) OR (count_write_line <= 3)) = '1' else '0'; 
-    --        --write_en(i) <= write_en_s(i) AND valid_in;
-    --    END GENERATE G_write_en;
-
+    -- ========================================
+    -- proc_write
+    -- Activates the specific Linebuffer used.
+    -- To avoid overwriting the part being read by writing too fast.
+    -- The difference between the number of lines written and the number 
+    -- of lines read must not exceed FILTER_SIZE lines, except for the 
+    -- first few lines. If the above conditions are met and new data is 
+    -- entered, activate the Linebuffer according to the parameters changed 
+    -- by increment_write_in_s
+    -- ========================================
     proc_write : PROCESS (write_en, valid_in, count_write_line, count_read_line)
     BEGIN
         FOR i IN 0 TO FILTER_SIZE LOOP
@@ -166,47 +132,10 @@ BEGIN
 
     END PROCESS proc_write;
 
-    --    proc_write : PROCESS (clk, rst_n)
-    --    BEGIN
-    --        IF (rst_n = '0') THEN
-    --            valid_0 <= '0';
-    --            valid_1 <= '0';
-    --            valid_2 <= '0';
-    --            valid_3 <= '0';
-    --        ELSIF (rising_edge(clk) AND ((count_write_line - count_read_line <= 3) OR count_write_line <= 3) AND count_write_line < IMAGE_HEIGHT) THEN
-    --            IF (valid_in = '1') THEN
-    --                CASE LineBuffer_wr_ptr IS
-    --                    WHEN "00" => valid_0 <= '1';
-    --                        valid_1 <= '0';
-    --                        valid_2 <= '0';
-    --                        valid_3 <= '0';
-    --                    WHEN "01" => valid_1 <= '1';
-    --                        valid_0 <= '0';
-    --                        valid_2 <= '0';
-    --                        valid_3 <= '0';
-    --                    WHEN "10" => valid_2 <= '1';
-    --                        valid_0 <= '0';
-    --                        valid_1 <= '0';
-    --                        valid_3 <= '0';
-    --                    WHEN "11" => valid_3 <= '1';
-    --                        valid_0 <= '0';
-    --                        valid_1 <= '0';
-    --                        valid_2 <= '0';
-    --                    WHEN OTHERS => valid_0 <= '0';
-    --                        valid_1 <= '0';
-    --                        valid_2 <= '0';
-    --                        valid_3 <= '0';
-    --                END CASE;
-    --            ELSE
-    --                valid_0 <= '0';
-    --                valid_1 <= '0';
-    --                valid_2 <= '0';
-    --                valid_3 <= '0';
-    --            END IF;
-
-    --        END IF;
-    --    END PROCESS proc_write;
-
+    -- ========================================
+    -- increment_count_write
+    -- Record how many lines of data have been read so far.
+    -- ========================================
     increment_count_write : PROCESS (clk, rst_n)
     BEGIN
         IF (rst_n = '0') THEN
@@ -223,13 +152,6 @@ BEGIN
                     ELSE
                         count_write_line <= IMAGE_HEIGHT;
                     END IF;
-
-                    -- CASE LineBuffer_wr_ptr IS
-                    --     WHEN "00" => LineBuffer_wr_ptr <= "01";
-                    --     WHEN "01" => LineBuffer_wr_ptr <= "10";
-                    --     WHEN "10" => LineBuffer_wr_ptr <= "11";
-                    --     WHEN OTHERS => LineBuffer_wr_ptr <= "00";
-                    -- END CASE;
                 ELSE
                     count_write <= count_write + 1;
                 END IF;
@@ -238,70 +160,18 @@ BEGIN
 
     END PROCESS increment_count_write;
 
-    --    proc_read : PROCESS (clk, rst_n)
-    --    BEGIN
-    --        IF (rst_n = '0') THEN
-    --            read_en_0 <= '0';
-    --            read_en_1 <= '0';
-    --            read_en_2 <= '0';
-    --            read_en_3 <= '0';
-    --            neighbourhood_out <= (OTHERS => '0');
-    --            valid_out <= '0';
-    --        ELSIF (rising_edge(clk) AND (count_write_line - count_read_line >= 3)) THEN --if 3 lines are filled
-
-    --            CASE LineBuffer_rd_ptr IS
-    --                WHEN "00" => read_en_0 <= '1';
-    --                    read_en_1 <= '1';
-    --                    read_en_2 <= '1';
-    --                    read_en_3 <= '0';
-    --                    neighbourhood_out <= data_out_0 & data_out_1 & data_out_2;
-    --                    valid_out <= '1';
-    --                WHEN "01" => read_en_1 <= '1';
-    --                    read_en_0 <= '0';
-    --                    read_en_2 <= '1';
-    --                    read_en_3 <= '1';
-    --                    neighbourhood_out <= data_out_1 & data_out_2 & data_out_3;
-    --                    valid_out <= '1';
-    --                WHEN "10" => read_en_2 <= '1';
-    --                    read_en_0 <= '1';
-    --                    read_en_1 <= '0';
-    --                    read_en_3 <= '1';
-    --                    neighbourhood_out <= data_out_2 & data_out_3 & data_out_0;
-    --                    valid_out <= '1';
-    --                WHEN "11" => read_en_3 <= '1';
-    --                    read_en_0 <= '1';
-    --                    read_en_1 <= '1';
-    --                    read_en_2 <= '0';
-    --                    neighbourhood_out <= data_out_3 & data_out_0 & data_out_1;
-    --                    valid_out <= '1';
-    --                WHEN OTHERS => read_en_0 <= '0';
-    --                    read_en_1 <= '0';
-    --                    read_en_2 <= '0';
-    --                    read_en_3 <= '0';
-    --                    neighbourhood_out <= (OTHERS => '0');
-    --                    valid_out <= '0';
-    --            END CASE;
-
-    --        END IF;
-    --    END PROCESS proc_read;
-
-    --    increment_read_en_s : PROCESS (clk, rst_n)
-    --            BEGIN
-    --                IF (rst_n = '0') THEN
-    --                    read_en_s <= (FILTER_SIZE => '0', OTHERS => '1');
-    --                ELSIF rising_edge(clk) THEN
-    --                    IF (count_read = IMAGE_WIDTH - FILTER_SIZE)  AND valid_in = '1' THEN -- move to next linebuffer when writing finished
-    --                        read_en_s <= read_en_s(FILTER_SIZE - 1 DOWNTO 0) & read_en_s(FILTER_SIZE);
-    --                    END IF;
-    --                END IF;
-    --            END PROCESS increment_read_en_s;
-
-    --        G_read_en : FOR i IN 0 TO FILTER_SIZE GENERATE
-    --               read_en(i) <= read_en_s(i) AND valid_in ;    
-    --               END GENERATE G_read_en;
     read_not_en_ptr <= LineBuffer_rd_ptr - 1 WHEN LineBuffer_rd_ptr > 0 ELSE --point to the linebuffer which is not used
         FILTER_SIZE;
 
+    -- ========================================
+    -- proc_read
+    -- Activates the specific Linebuffer used.
+    -- However, unlike before, the writing section uses only 
+    -- one Linebuffer, while the reading section uses three.
+    -- When the edge of an image line is read, the next 
+    -- Linebuffer usage is determined by considering all cases,
+    -- based on the current Linebuffer usage.
+    -- ========================================
     proc_read : PROCESS (read_not_en_ptr, LineBuffer_rd_ptr, data_out, count_read_line, count_write_line)
     BEGIN
 
@@ -311,36 +181,15 @@ BEGIN
             read_en(read_not_en_ptr) <= '0';
 
             CASE LineBuffer_rd_ptr IS
-
                 WHEN 0 =>
-                    --                        read_en(0) <= '1';
-                    --                        read_en(1) <= '1';
-                    --                        read_en(2) <= '1';
-                    --                        read_en(3) <= '0';
                     neighbourhood_out <= data_out(0) & data_out(1) & data_out(2);
                 WHEN 1 =>
-                    --                        read_en(1) <= '1';
-                    --                        read_en(0) <= '0';
-                    --                        read_en(2) <= '1';
-                    --                        read_en(3) <= '1';
                     neighbourhood_out <= data_out(1) & data_out(2) & data_out(3);
                 WHEN 2 =>
-                    --                        read_en(2) <= '1';
-                    --                        read_en(0) <= '1';
-                    --                        read_en(1) <= '0';
-                    --                        read_en(3) <= '1';
                     neighbourhood_out <= data_out(2) & data_out(3) & data_out(0);
                 WHEN 3 =>
-                    --                        read_en(3) <= '1';
-                    --                        read_en(0) <= '1';
-                    --                        read_en(1) <= '1';
-                    --                        read_en(2) <= '0';
                     neighbourhood_out <= data_out(3) & data_out(0) & data_out(1);
                 WHEN OTHERS =>
-                    --                        read_en(0) <= '0';
-                    --                        read_en(1) <= '0';
-                    --                        read_en(2) <= '0';
-                    --                        read_en(3) <= '0';
                     neighbourhood_out <= (OTHERS => '0');
             END CASE;
         ELSE
@@ -352,6 +201,16 @@ BEGIN
     valid_out <= '1' WHEN unsigned(read_en) > 0 ELSE
         '0';
 
+    -- ========================================
+    -- increment_LineBuffer_rd_ptr
+    -- Activates the specific Linebuffer used.
+    -- To avoid overwriting the part being read by writing too fast.
+    -- The difference between the number of lines written and the number 
+    -- of lines read must not exceed FILTER_SIZE lines, except for the 
+    -- first few lines. If the above conditions are met and new data is 
+    -- entered, activate the Linebuffer according to the parameters changed 
+    -- by increment_write_in_s
+    -- ========================================
     increment_LineBuffer_rd_ptr : PROCESS (clk, rst_n)
     BEGIN
         IF (rst_n = '0') THEN
@@ -362,20 +221,11 @@ BEGIN
             IF (count_write_line - count_read_line >= FILTER_SIZE) THEN --same as proc_read
                 IF (count_read = IMAGE_WIDTH - FILTER_SIZE) THEN
                     count_read <= 0;
-                    -- count_read_line <= count_read_line + 1;
-
                     IF (count_read_line < IMAGE_HEIGHT - FILTER_SIZE) THEN
                         count_read_line <= count_read_line + 1;
                     ELSE
                         count_read_line <= IMAGE_HEIGHT - FILTER_SIZE;
                     END IF;
-
-                    --                    CASE LineBuffer_rd_ptr IS
-                    --                        WHEN "00" => LineBuffer_rd_ptr <= "01";
-                    --                        WHEN "01" => LineBuffer_rd_ptr <= "10";
-                    --                        WHEN "10" => LineBuffer_rd_ptr <= "11";
-                    --                        WHEN OTHERS => LineBuffer_rd_ptr <= "00";
-                    --                    END CASE;    
                     IF LineBuffer_rd_ptr = FILTER_SIZE THEN
                         LineBuffer_rd_ptr <= 0;
                     ELSE
