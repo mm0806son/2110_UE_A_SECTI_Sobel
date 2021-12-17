@@ -40,16 +40,15 @@ END LineBuffer;
 
 ARCHITECTURE Behavioral OF LineBuffer IS
 
-    TYPE LineBuff IS ARRAY (0 TO IMAGE_WIDTH - 1) OF STD_LOGIC_VECTOR(PIXEL_BW-1 DOWNTO 0);
+    TYPE LineBuff IS ARRAY (0 TO IMAGE_WIDTH - 1) OF STD_LOGIC_VECTOR(PIXEL_BW - 1 DOWNTO 0);
     SIGNAL LineBuffer : LineBuff;
-    SIGNAL rd_ptr : INTEGER RANGE 0 TO IMAGE_WIDTH - FILTER_SIZE := 0;
-    SIGNAL wr_ptr : INTEGER RANGE 0 TO IMAGE_WIDTH - 1 := 0;
-    
+    SIGNAL rd_ptr : INTEGER RANGE 0 TO IMAGE_WIDTH - FILTER_SIZE := 0; --pointer to indicate the pixel (and the next 2 pixels) to read from 
+    SIGNAL wr_ptr : INTEGER RANGE 0 TO IMAGE_WIDTH - 1 := 0; --pointer to indicate the pixel to write in
+
 BEGIN
 
     PROCESS (clk, rst_n)
     BEGIN
-        -- TODO 
         IF (rst_n = '0') THEN --reset
             LineBuffer <= (OTHERS => (OTHERS => '0')); --clear the buffer
             rd_ptr <= 0;
@@ -57,29 +56,27 @@ BEGIN
         ELSIF rising_edge(clk) THEN
             IF (valid_in = '1') THEN --data coming
                 LineBuffer(wr_ptr) <= pixel_in; --store one pixel
-                IF (wr_ptr < IMAGE_WIDTH - 1) THEN
+                IF (wr_ptr < IMAGE_WIDTH - 1) THEN --move until the last pixel
                     wr_ptr <= wr_ptr + 1;
-                ELSE
-                    wr_ptr <= 0;
+                ELSE --when this line is finished
+                    wr_ptr <= 0; --ready for the next line
                 END IF;
             END IF;
 
             IF (read_en = '1') THEN --ready to read
-                IF (rd_ptr < IMAGE_WIDTH - FILTER_SIZE) THEN
+                IF (rd_ptr < IMAGE_WIDTH - FILTER_SIZE) THEN --move until the last pixel
                     rd_ptr <= rd_ptr + 1;
-                ELSE
-                    rd_ptr <= 0;
+                ELSE --when this line is finished
+                    rd_ptr <= 0; --ready for the next line
                 END IF;
             END IF;
         END IF;
 
     END PROCESS;
 
-    
-    G_data_out : for i in 0 to FILTER_SIZE-1 generate
-        data_out((i+1)*PIXEL_BW-1 downto i*PIXEL_BW) <= LineBuffer(rd_ptr+FILTER_SIZE-i-1);
-    end generate G_data_out;
-    
---    data_out <= LineBuffer(rd_ptr) & LineBuffer(rd_ptr + 1) & LineBuffer(rd_ptr + 2);
+    --    data_out <= LineBuffer(rd_ptr) & LineBuffer(rd_ptr + 1) & LineBuffer(rd_ptr + 2) & ... LineBuffer(FILTER_SIZE-1);
+    G_data_out : FOR i IN 0 TO FILTER_SIZE - 1 GENERATE
+        data_out((i + 1) * PIXEL_BW - 1 DOWNTO i * PIXEL_BW) <= LineBuffer(rd_ptr + FILTER_SIZE - i - 1);
+    END GENERATE G_data_out;
 
 END Behavioral;
