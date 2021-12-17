@@ -35,7 +35,7 @@ ENTITY sobel_coproc IS
         t_valid_in : IN STD_LOGIC; --data coming?
         t_ready_in : OUT STD_LOGIC; --ready to receive?
         t_data_in : IN STD_LOGIC_VECTOR (PIXEL_BW - 1 DOWNTO 0); --input data
-        interrupt_out : OUT STD_LOGIC;
+        interrupt_out : OUT STD_LOGIC; --activate for 1 clock period when one line is finished
         t_valid_out : OUT STD_LOGIC; --data in the register?
         t_ready_out : IN STD_LOGIC; --data is read? 
         t_data_out : OUT STD_LOGIC_VECTOR (PIXEL_BW - 1 DOWNTO 0)); --data register
@@ -67,7 +67,7 @@ ARCHITECTURE Behavioral OF sobel_coproc IS
     SIGNAL gradient : INTEGER RANGE 0 TO 2047 := 0;
     CONSTANT threshold : INTEGER RANGE 0 TO 2047 := 255;
     SIGNAL ImageBuffer_valid_out : STD_LOGIC;
-    SIGNAL read_count : INTEGER RANGE 0 TO IMAGE_WIDTH := 0;
+    SIGNAL read_count : INTEGER RANGE 0 TO IMAGE_WIDTH := 0; --counter of pixels read
 BEGIN
 
     ImageBuffer_0 : ImageBuffer
@@ -88,27 +88,8 @@ BEGIN
         valid_out => ImageBuffer_valid_out
     );
 
-    --        handshake : PROCESS (clk, rst_n)
-    --        BEGIN
-    --            IF (rst_n = '0') THEN --reset
-    --                t_valid_out_s <= '0'; --register is vide
-    --                t_data_out <= (OTHERS => '0'); --clear the register
-    --            ELSIF (rising_edge(clk)) THEN
-    --                IF (t_valid_in = '1' AND (t_valid_out_s = '0' OR t_ready_out = '1')) THEN --data coming & (register is vide | data in the register is already read)
-    --                    t_valid_out_s <= '1'; --data in the register
-    --                    t_data_out <= t_data_in; --save data in the register
-
-    --                ELSIF (t_ready_out = '1') THEN --data in the register is already read
-    --                    t_valid_out_s <= '0'; --register is vide
-
-    --                END IF;
-    --            END IF;
-
-    --        END PROCESS handshake;
-
     sobel : PROCESS (clk, rst_n)
         VARIABLE A, B, C, D, F, G, H, I : INTEGER;
-        --VARIABLE read_count : INTEGER := 0;
     BEGIN
         IF (rst_n = '0') THEN --reset
             t_valid_out_s <= '0'; --register is vide
@@ -118,7 +99,7 @@ BEGIN
 
         ELSIF (rising_edge(clk)) THEN
             --IF (ImageBuffer_valid_out = '1' AND (t_valid_out_s = '0' OR t_ready_out = '1')) THEN --data coming & (register is vide | data in the register is already read)
-            IF (ImageBuffer_valid_out = '1') THEN --data coming & (register is vide | data in the register is already read)
+            IF (ImageBuffer_valid_out = '1') THEN --data coming
                 t_valid_out_s <= '1'; --data in the register
 
                 IF (read_count = IMAGE_WIDTH - FILTER_SIZE) THEN
@@ -142,13 +123,12 @@ BEGIN
                 gradient <= ABS(Gh) + ABS(Gv);
 
                 IF (gradient > threshold) THEN
-                    t_data_out <= "11111111"; --save output data in the register
+                    t_data_out <= "11111111"; --save output data (a write pixel) in the register
                 ELSE
-                    t_data_out <= "00000000";
+                    t_data_out <= "00000000"; --a black pixel
                 END IF;
             ELSIF (t_ready_out = '1') THEN --data in the register is already read
                 t_valid_out_s <= '0'; --register is vide
-
             END IF;
         END IF;
 
